@@ -1,0 +1,6 @@
+#!/bin/bash
+/usr/local/bin/ffmpeg -r 21 -start_number $2 -i $1frames/frame-%06d.tif -c:v libx264 -r 30 -pix_fmt yuv420p $1export_$3.mp4
+rm $1frames/*.tif
+
+#ffmpeg -r 25 -start_number $1 -i /Users/sam/Dropbox/school/spring_2014/surveillance/SuspiciousCamera/suspicious/data/frames/frame-%06d.tif -c:v libx264 -r 30 -pix_fmt yuv420p "/Users/sam/Dropbox/school/spring_2014/surveillance/SuspiciousCamera/suspicious/data/export_$2.mp4"
+#rm /Users/sam/Dropbox/school/spring_2014/surveillance/SuspiciousCamera/suspicious/data/frames/*.tif

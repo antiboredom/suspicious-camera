@@ -3,16 +3,33 @@ import java.awt.Rectangle;
 import processing.video.*;
 import processing.serial.*;
 
+final int JUSTFACE = 0;
+final int EDGE = 1;
+final int WIDEFACE = 2;
+final int ZOOMFACE = 3;
+
 Capture video;
 OpenCV opencv;
-int ratio = 4;
-PImage buffer;
-Serial myPort;  // Create object from Serial class
-boolean recording = false;
-int startFrame;
-int lastRecorded = 0;
-int recordTime = 70;
-boolean debug = false;
+Rectangle[] faces;
+Serial myPort;
+
+boolean recording = false, debug = true, drawLines = true, makeRecordings = true;
+
+PImage buffer, faceBufferImg, zoomBufferImg;
+PGraphics faceBuffer, zoomBuffer;
+
+int ratio = 4, startFrame, currentFrame = 1, lastRecorded = 0, recordTime = 100, biggest;
+
+int captureType = ZOOMFACE;
+
+int defaultFacePadding = 20, minFacePadding = 0, maxFacePadding = 500;
+int facePadding = maxFacePadding;
+
+int faceWidth, faceHeight;
+
+float zoomSpeed = 10;
+float zX = 0, zY = 0, zW, zH;
+
 
 void setup() {
   frameRate(30);
@@ -34,14 +51,20 @@ void setup() {
     String portName = Serial.list()[7];
     myPort = new Serial(this, portName, 9600);
     size(1280, 720);
-    video = new Capture(this, width, height, "Logitech Camera #2", 30);
+    video = new Capture(this, width, height, "Logitech Camera", 30);
   }
-
-
+  
+  zW = width;
+  zH = height;
 
   opencv = new OpenCV(this, width/ratio, height/ratio);
   buffer = createImage(width/ratio, height/ratio, RGB);
-  //display = createImage(width, height);
+  faceBuffer = createGraphics(500, 500);
+  faceBufferImg = createImage(faceBuffer.width, faceBuffer.height, RGB);
+  
+  zoomBuffer = createGraphics(width, height);
+  zoomBufferImg = createImage(zoomBuffer.width, zoomBuffer.height, RGB);
+
   //opencv.loadCascade(OpenCV.CASCADE_FRONTALFACE);
   opencv.loadCascade("haarcascade_frontalface_alt2.xml");
   //opencv.loadCascade(OpenCV.CASCADE_PROFILEFACE);
@@ -54,45 +77,109 @@ void draw() {
   image(video, 0, 0);
   findFaces();
 
-  if (recording) {
+  if (recording && makeRecordings) {
     if (frameCount - startFrame < recordTime) {
-      saveAFrame();
-      //thread("saveAFrame");
+      if (captureType == EDGE || captureType == WIDEFACE) {
+        saveAFrame();
+      } 
+      else if (captureType == JUSTFACE) {
+        savePartialFrame(defaultFacePadding);
+      } 
+      else if (captureType == ZOOMFACE) {
+        //facePadding -= zoomSpeed;
+        //facePadding = constrain(facePadding, minFacePadding, maxFacePadding);
+        saveZoomFrame();
+      }
     } 
     else {
       recording = false;
       lastRecorded = frameCount;
       exportFramesToMP4(startFrame);
+      zX = 0;
+      zY = 0;
+      zW = width;
+      zH = height;
     }
   }
 }
 
 void captureEvent(Capture c) {
   c.read();
-  if (frameCount % 2 == 0) {
+  if (frameCount % 1 == 0) {
     buffer.copy(c, 0, 0, c.width, c.height, 0, 0, width/ratio, height/ratio);
     opencv.loadImage(buffer);
   }
 }
 
 void saveAFrame() {
-  saveFrame("data/frames/frame-######.tif");
+  saveFrame(String.format("data/frames/frame-%06d.tif", currentFrame));
+  currentFrame ++;
+}
+
+void savePartialFrame(int padding) {
+  if (faces.length > 0 && biggest >= 0 && biggest < faces.length) {
+    faceBufferImg.copy(video, faces[biggest].x*ratio - padding, faces[biggest].y*ratio - padding, faces[biggest].height*ratio + padding*2, faces[biggest].height*ratio + padding*2, 0, 0, faceBuffer.width, faceBuffer.height);
+    //faceBufferImg.copy(video, faces[biggest].x*ratio - padding, faces[biggest].y*ratio - padding, faceWidth*ratio + padding*2, faceWidth*ratio + padding*2, 0, 0, faceBuffer.width, faceBuffer.height);
+    faceBuffer.beginDraw();
+    faceBuffer.image(faceBufferImg, 0, 0);
+    faceBuffer.save(String.format("data/frames/frame-%06d.tif", currentFrame));
+    faceBuffer.endDraw();
+    currentFrame ++;
+  }
+}
+
+void saveZoomFrame() {
+  if (faces.length > 0 && biggest >= 0 && biggest < faces.length) {
+
+    zY += zoomSpeed;
+    zX += zoomSpeed;
+    zX = constrain(zX, 0, faces[biggest].x * ratio);
+    zY = constrain(zY, 0, faces[biggest].y * ratio);
+    
+    zH -= zoomSpeed;
+    zH = constrain(zH, faces[biggest].height * ratio, height);
+
+    zW = (zH / height) * width;
+    
+    zoomBufferImg.copy(video, int(zX), int(zY), int(zW), int(zH), 0, 0, zoomBuffer.width, zoomBuffer.height);
+    zoomBuffer.beginDraw();
+    zoomBuffer.image(zoomBufferImg, 0, 0);
+    zoomBuffer.save(String.format("data/frames/frame-%06d.tif", currentFrame));
+    zoomBuffer.endDraw();
+    currentFrame ++;
+    
+    noFill();
+    stroke(255, 0, 0);
+    rect(zX, zY, zW, zH);
+  }
+  //zX += zoomSpeed;
+  //zY += zoomSpeed;
 }
 
 void exportFramesToMP4(int start) {
   //to save a movie:
   //ffmpeg -r 25 -start_number 84 -i screen-%04d.tif -c:v libx264 -r 30 -pix_fmt yuv420p out.mp4
+
+  //OR, use my script: ./converter suspicious/data/ 302 justtesting
+
+  //  String[] cmd = {
+  //    "/usr/local/bin/ffmpeg", 
+  //    "-r", "30", 
+  //    "-start_number", str(start), 
+  //    "-i", dataPath("") + "/frames/frame-%06d.tif", 
+  //    "-c:v", "libx264", 
+  //    "-r", "30", 
+  //    "-pix_fmt", "yuv420p", 
+  //    dataPath("export_" + (System.currentTimeMillis()/1000) + ".mp4")
+  //    };
+
   String[] cmd = {
-    "/usr/local/bin/ffmpeg", 
-    "-r", "30", 
-    "-start_number", str(start), 
-    "-i", dataPath("") + "/frames/frame-%06d.tif", 
-    "-c:v", "libx264", 
-    "-r", "30", 
-    "-pix_fmt", "yuv420p", 
-    dataPath("export_" + str(start) + ".mp4")
+    sketchPath("converter"), 
+    dataPath("") + "/", 
+    str(1), 
+    "" + (System.currentTimeMillis()/1000)
     };
-  exec(cmd);
+    exec(cmd);
   println(cmd);
 }
 
@@ -100,14 +187,14 @@ void exportFramesToGif(int start) {
   //to save a gif:
   //ffmpeg -f image2 -start_number 84 -i screen-%04d.tif -pix_fmt rgb24 out.gif
   String[] cmd = {
-    "/usr/local/bin/ffmpeg",
-    "-f", "image2",
-    "-start_number", str(start),
-    "-i", dataPath("") + "/frame-%06d.tif",
-    "-pix_fmt", "rgb24",
-    dataPath("export_" + str(start) + ".gif")
+    "/usr/local/bin/ffmpeg", 
+    "-f", "image2", 
+    "-start_number", str(start), 
+    "-i", dataPath("") + "/frames/frame-%06d.tif", 
+    "-pix_fmt", "rgb24", 
+    dataPath("export_" + (System.currentTimeMillis()/1000) + ".gif")
     };
-  exec(cmd);
+    exec(cmd);
   println(cmd);
 }
 
@@ -115,16 +202,29 @@ void center(int x, int y) {
   if (debug) {
     ellipse(x * ratio, y * ratio, 20, 20);
   }
-  
+
   int centerX = width/2;
   int centerY = height/2;
   int dX = int((float(x) * float(ratio) / width)*100.0);
   int dY = int((float(y) * float(ratio) / height)*100.0);
   String command = str(dX) + "," + str(dY) + "!";
 
-  if ((dX < 30 || dX > 70 || dY < 30 || dY > 70) && !recording && frameCount - lastRecorded > 100) {
-    recording = true;
-    startFrame = frameCount;
+  if (captureType == EDGE) {
+    if ((dX < 30 || dX > 70 || dY < 30 || dY > 70) && !recording && frameCount - lastRecorded > 100) {
+      recording = true;
+      startFrame = frameCount;
+      currentFrame = 1;
+    }
+  } 
+  else if (captureType == JUSTFACE || captureType == WIDEFACE || captureType == ZOOMFACE) {
+    if (faces.length > 0 && !recording && frameCount - lastRecorded > 100) {
+      recording = true;
+      startFrame = frameCount;
+      currentFrame = 1;
+      facePadding = maxFacePadding;
+      faceWidth = faces[biggest].width;
+      faceHeight = faces[biggest].height;
+    }
   }
 
   //println(command);
@@ -132,11 +232,11 @@ void center(int x, int y) {
 }
 
 void findFaces() {
-  Rectangle[] faces = opencv.detect();
+  faces = opencv.detect();
   if (faces.length > 0) {
-    int biggest = 0;
+    biggest = 0;
     float biggestWidth = 0;
-    
+
     for (int i = 0; i < faces.length; i++) {
       if (debug) {
         noFill();
@@ -151,8 +251,9 @@ void findFaces() {
       }
     }
 
-    if (debug) {
+    if (debug || drawLines) {
       stroke(255, 0, 0);
+      noFill();
       rect(faces[biggest].x * ratio, faces[biggest].y * ratio, faces[biggest].width * ratio, faces[biggest].height * ratio);
     }
 

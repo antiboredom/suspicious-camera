@@ -51,7 +51,7 @@ void setup() {
     String portName = Serial.list()[7];
     myPort = new Serial(this, portName, 9600);
     size(1280, 720);
-    video = new Capture(this, width, height, "Logitech Camera", 30);
+    video = new Capture(this, width, height, "Logitech Camera #2", 30);
   }
   
   zW = width;
@@ -130,16 +130,17 @@ void savePartialFrame(int padding) {
 
 void saveZoomFrame() {
   if (faces.length > 0 && biggest >= 0 && biggest < faces.length) {
-
-    zY += zoomSpeed;
-    zX += zoomSpeed;
-    zX = constrain(zX, 0, faces[biggest].x * ratio);
-    zY = constrain(zY, 0, faces[biggest].y * ratio);
-    
     zH -= zoomSpeed;
     zH = constrain(zH, faces[biggest].height * ratio, height);
-
     zW = (zH / height) * width;
+    
+    zY += zoomSpeed;
+    zX += zoomSpeed;
+    zX = constrain(zX, 0, faces[biggest].x * ratio - (zW - faces[biggest].width*ratio)/2);
+    if (zX < 0) zX = 0;
+    zY = constrain(zY, 0, faces[biggest].y * ratio);
+    
+    
     
     zoomBufferImg.copy(video, int(zX), int(zY), int(zW), int(zH), 0, 0, zoomBuffer.width, zoomBuffer.height);
     zoomBuffer.beginDraw();
@@ -149,7 +150,7 @@ void saveZoomFrame() {
     currentFrame ++;
     
     noFill();
-    stroke(255, 0, 0);
+    stroke(0, 0, 255);
     rect(zX, zY, zW, zH);
   }
   //zX += zoomSpeed;

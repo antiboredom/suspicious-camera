@@ -10,8 +10,8 @@ int maxX = 200;
 int minY = -200;
 int maxY = 200;
 
-int miA = -48;
-int maA = 48;
+int miA = -45;
+int maA = 45;
 
 //camera is: Logitech HD Pro Webcam C920
 //http://logitech-en-amr.custhelp.com/app/answers/detail/a_id/28927/section/troubleshoot/crid/405/lt_product_id/9442/tabs/1,3,2,4,5/cl/us,en

@@ -13,7 +13,7 @@ OpenCV opencv;
 Rectangle[] faces;
 Serial myPort;
 
-boolean recording = false, debug = true, drawLines = true, makeRecordings = true;
+boolean recording = false, debug = false, drawLines = true, makeRecordings = true;
 
 PImage buffer, faceBufferImg, zoomBufferImg;
 PGraphics faceBuffer, zoomBuffer;

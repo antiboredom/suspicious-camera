@@ -25,14 +25,14 @@ int captureType = ZOOMFACE;
 int defaultFacePadding = 20, minFacePadding = 0, maxFacePadding = 500;
 int facePadding = maxFacePadding;
 
-int faceWidth, faceHeight;
+int faceWidth, faceHeight, faceX, faceY;
 
 float zoomSpeed = 10;
 float zX = 0, zY = 0, zW, zH;
 
 
 void setup() {
-  frameRate(30);
+  //frameRate(30);
   String[] cameras = Capture.list();
   for (int i = 0; i < cameras.length; i++) {
     println(i + " " + cameras[i]);
@@ -239,7 +239,7 @@ void findFaces() {
     float biggestWidth = 0;
 
     for (int i = 0; i < faces.length; i++) {
-      if (debug) {
+      if (debug || drawLines) {
         noFill();
         stroke(0, 255, 0);
         strokeWeight(1);
@@ -257,9 +257,16 @@ void findFaces() {
       noFill();
       rect(faces[biggest].x * ratio, faces[biggest].y * ratio, faces[biggest].width * ratio, faces[biggest].height * ratio);
     }
-
-    //center the camera
-    center(faces[biggest].x + faces[biggest].width/2, faces[biggest].y + faces[biggest].height/2);
+    
+    //if (faceX == null) {
+    //  faceX = faces[bigget].x
+    
+    if (abs(faceX - faces[biggest].x) < 50 && abs(faceY - faces[biggest].y) < 50) {
+      //center the camera
+      center(faces[biggest].x + faces[biggest].width/2, faces[biggest].y + faces[biggest].height/2);
+    }
+    faceX = faces[biggest].x;
+    faceY = faces[biggest].y;
   }
 }
 

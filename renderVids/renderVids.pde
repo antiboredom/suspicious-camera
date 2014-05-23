@@ -10,7 +10,7 @@ int index = 0;
 String[] filenames;
 
 void setup() {
-//  frameRate(30);
+  frameRate(25);
   imageMode(CENTER);
   //size(1280, 720);
   size(displayWidth, displayHeight);
@@ -170,8 +170,6 @@ class Timer {
   }
 
   float update(int startedAt) {
-    //println("startedAt: " + startedAt + ", timestamp: " + timestamp);
-    //println((startedAt - timestamp) + " old: " + oldVal + ", new: " + val);
     float currentVal = map(startedAt - timestamp, 0, duration, oldVal, val);
     if (oldVal < val) currentVal = constrain(currentVal, oldVal, val);
     else currentVal = constrain(currentVal, val, oldVal);
@@ -180,7 +178,7 @@ class Timer {
 }
 
 void getLatestFiles() {
-  File dir = new File("/Users/sam/Dropbox/school/spring_2014/surveillance/SuspiciousCamera/suspicious/data/");
+  File dir = new File("/Users/sam/Dropbox/school/spring_2014/surveillance/SuspiciousCamera/suspicious/data/videos");
   File [] files  = dir.listFiles();
   Arrays.sort(files, new Comparator() {
     public int compare(Object o1, Object o2) {
@@ -189,10 +187,10 @@ void getLatestFiles() {
     private int compare( File f1, File f2) {
       long result = f2.lastModified() - f1.lastModified();
       if ( result > 0 ) {
-        return 1;
+        return -1;
       } 
       else if ( result < 0 ) {
-        return -1;
+        return 1;
       } 
       else {
         return 0;

@@ -5,6 +5,7 @@ import java.util.Comparator;
 
 int index = 0;
 String[] filenames;
+String PATH_TO_VIDEOS = "/Users/sam/Dropbox/school/spring_2014/surveillance/SuspiciousCamera/suspicious/data/";
 
 float w, h;
 
@@ -35,8 +36,6 @@ void movieEvent(Movie m) {
 
 void nextMovie() {
   if (mov != null) {
-    mov.stop();
-    //mov.finish();
     mov.dispose();
     mov = null;
     System.gc();
@@ -49,7 +48,7 @@ void nextMovie() {
 }
 
 void getLatestFiles() {
-  File dir = new File("/Users/sam/Dropbox/school/spring_2014/surveillance/SuspiciousCamera/suspicious/data/");
+  File dir = new File(PATH_TO_VIDEOS);
   File [] files  = dir.listFiles();
   Arrays.sort(files, new Comparator() {
     public int compare(Object o1, Object o2) {

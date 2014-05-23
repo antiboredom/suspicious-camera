@@ -21,7 +21,6 @@ float hfieldOfView = 69.7;
 float vfieldOfView = 39.2;
 
 //how far can we be offcenter by?
-//int threshold = 5;
 //int xThreshold = 10;
 //int yThreshold = 15;
 int xThreshold = 7;
@@ -54,22 +53,6 @@ void loop() {
 }
 
 void moveHead(int x, int y) {
-  //  if (abs(50 - x) > threshold) {
-  //    moveStepper(horizontalStepper, x, hfieldOfView, minX, maxX);
-  //  }
-  //
-  //  if (abs(50 - y) > threshold) {
-  //    //moveStepper(verticalStepper, y, vfieldOfView, minY, maxY);
-  //  }
-
-
-  //  int xpos = horizontalStepper.currentPosition();
-  //  if (abs(50 - x) > 10) {
-  //    if (x > 50) xpos += map(x, 50, 100, 10, 30);
-  //    else xpos -= map(x, 0, 50, 10, 30);
-  //    horizontalStepper.moveTo(xpos);
-  //  }
-
   if (abs(50 - x) > xThreshold) {
     int currentXPos = horizontalStepper.currentPosition();
     float currentAngle = map(currentXPos, minX, maxX, miA, maA);
@@ -87,31 +70,7 @@ void moveHead(int x, int y) {
     ypos = constrain(ypos, minY, maxY);
     verticalStepper.moveTo(ypos);
   }
-  //convert pixel offset to degrees
-  //int xpos = horizontalStepper.currentPosition();
-  //xpos = xpos + x;
-  //xpos = constrain(xpos, maxRight, maxLeft);
-  //  if (abs(x) > 30) {
-  //    x = constrain(x, maxRight, maxLeft);
-  //    horizontalStepper.moveTo(x);
-  //  } else {
-  //    horizontalStepper.stop();
-  //  }
 }
-
-void moveStepper(AccelStepper stepper, int pos, float fieldOfView, int minPos, int maxPos) {
-  int currentPos = stepper.currentPosition();
-  float currentAngle = map(currentPos, minPos, maxPos, -45, 45);
-  float newAngle = fieldOfView * float(100-pos)/100 - fieldOfView/2 + currentAngle;
-  int newPos = (int)map(newAngle, -45, 45, minPos, maxPos);
-  stepper.moveTo(newPos);
-}
-
-void serialEvent() {
-}
-
-
-
 
 
 

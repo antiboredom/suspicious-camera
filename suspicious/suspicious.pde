@@ -30,9 +30,12 @@ int faceWidth, faceHeight, faceX, faceY;
 float zoomSpeed = 10;
 float zX = 0, zY = 0, zW, zH;
 
+//change the length of this array to affect camera sensitivity
+//and acuracy. Larger array = less false positives but less sensitivity.
+PVector[] faceRecords = new PVector[2];
+int faceRecordIndex = 0;
 
 void setup() {
-  //frameRate(30);
   String[] cameras = Capture.list();
   for (int i = 0; i < cameras.length; i++) {
     println(i + " " + cameras[i]);
@@ -53,7 +56,7 @@ void setup() {
     size(1280, 720);
     video = new Capture(this, width, height, "Logitech Camera #2", 30);
   }
-  
+
   zW = width;
   zH = height;
 
@@ -61,13 +64,11 @@ void setup() {
   buffer = createImage(width/ratio, height/ratio, RGB);
   faceBuffer = createGraphics(500, 500);
   faceBufferImg = createImage(faceBuffer.width, faceBuffer.height, RGB);
-  
+
   zoomBuffer = createGraphics(width, height);
   zoomBufferImg = createImage(zoomBuffer.width, zoomBuffer.height, RGB);
 
-  //opencv.loadCascade(OpenCV.CASCADE_FRONTALFACE);
   opencv.loadCascade("haarcascade_frontalface_alt2.xml");
-  //opencv.loadCascade(OpenCV.CASCADE_PROFILEFACE);
 
   video.start();
 }
@@ -86,8 +87,6 @@ void draw() {
         savePartialFrame(defaultFacePadding);
       } 
       else if (captureType == ZOOMFACE) {
-        //facePadding -= zoomSpeed;
-        //facePadding = constrain(facePadding, minFacePadding, maxFacePadding);
         saveZoomFrame();
       }
     } 
@@ -105,6 +104,8 @@ void draw() {
 
 void captureEvent(Capture c) {
   c.read();
+  
+  //how frequently should we detect faces?
   if (frameCount % 1 == 0) {
     buffer.copy(c, 0, 0, c.width, c.height, 0, 0, width/ratio, height/ratio);
     opencv.loadImage(buffer);
@@ -119,7 +120,6 @@ void saveAFrame() {
 void savePartialFrame(int padding) {
   if (faces.length > 0 && biggest >= 0 && biggest < faces.length) {
     faceBufferImg.copy(video, faces[biggest].x*ratio - padding, faces[biggest].y*ratio - padding, faces[biggest].height*ratio + padding*2, faces[biggest].height*ratio + padding*2, 0, 0, faceBuffer.width, faceBuffer.height);
-    //faceBufferImg.copy(video, faces[biggest].x*ratio - padding, faces[biggest].y*ratio - padding, faceWidth*ratio + padding*2, faceWidth*ratio + padding*2, 0, 0, faceBuffer.width, faceBuffer.height);
     faceBuffer.beginDraw();
     faceBuffer.image(faceBufferImg, 0, 0);
     faceBuffer.save(String.format("data/frames/frame-%06d.tif", currentFrame));
@@ -133,34 +133,31 @@ void saveZoomFrame() {
     zH -= zoomSpeed;
     zH = constrain(zH, faces[biggest].height * ratio, height);
     zW = (zH / height) * width;
-    
+
     zY += zoomSpeed;
     zX += zoomSpeed;
     zX = constrain(zX, 0, faces[biggest].x * ratio - (zW - faces[biggest].width*ratio)/2);
     if (zX < 0) zX = 0;
     zY = constrain(zY, 0, faces[biggest].y * ratio);
-    
-    
-    
+
     zoomBufferImg.copy(video, int(zX), int(zY), int(zW), int(zH), 0, 0, zoomBuffer.width, zoomBuffer.height);
     zoomBuffer.beginDraw();
     zoomBuffer.image(zoomBufferImg, 0, 0);
     zoomBuffer.save(String.format("data/frames/frame-%06d.tif", currentFrame));
     zoomBuffer.endDraw();
     currentFrame ++;
-    
-    noFill();
-    stroke(0, 0, 255);
-    rect(zX, zY, zW, zH);
+
+    if (drawLines || debug) {
+      noFill();
+      stroke(0, 0, 255);
+      rect(zX, zY, zW, zH);
+    }
   }
-  //zX += zoomSpeed;
-  //zY += zoomSpeed;
 }
 
 void exportFramesToMP4(int start) {
   //to save a movie:
   //ffmpeg -r 25 -start_number 84 -i screen-%04d.tif -c:v libx264 -r 30 -pix_fmt yuv420p out.mp4
-
   //OR, use my script: ./converter suspicious/data/ 302 justtesting
 
   //  String[] cmd = {
@@ -200,10 +197,6 @@ void exportFramesToGif(int start) {
 }
 
 void center(int x, int y) {
-  if (debug) {
-    ellipse(x * ratio, y * ratio, 20, 20);
-  }
-
   int centerX = width/2;
   int centerY = height/2;
   int dX = int((float(x) * float(ratio) / width)*100.0);
@@ -228,7 +221,7 @@ void center(int x, int y) {
     }
   }
 
-  //println(command);
+  println(command);
   myPort.write(command);
 }
 
@@ -257,14 +250,23 @@ void findFaces() {
       noFill();
       rect(faces[biggest].x * ratio, faces[biggest].y * ratio, faces[biggest].width * ratio, faces[biggest].height * ratio);
     }
-    
-    //if (faceX == null) {
-    //  faceX = faces[bigget].x
-    
-    if (abs(faceX - faces[biggest].x) < 50 && abs(faceY - faces[biggest].y) < 50) {
-      //center the camera
+
+    faceRecords[faceRecordIndex] = new PVector(faces[biggest].x, faces[biggest].y);
+    faceRecordIndex ++;
+    if (faceRecordIndex >= faceRecords.length) faceRecordIndex = 0;
+
+    boolean shouldCenter = true;
+    for (int i = 0; i < faceRecords.length; i ++) {
+      if (faceRecords[i] != null && dist(faceRecords[i].x, faceRecords[i].y, faces[biggest].x, faces[biggest].y) > 50) {
+        shouldCenter = false;
+      }
+    }
+    println(faceRecords);
+
+    if (shouldCenter) {
       center(faces[biggest].x + faces[biggest].width/2, faces[biggest].y + faces[biggest].height/2);
     }
+
     faceX = faces[biggest].x;
     faceY = faces[biggest].y;
   }
